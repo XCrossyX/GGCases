@@ -12,14 +12,15 @@
     .view { display: none; padding: 20px; }
     .active { display: block; }
     .cases-list, .inventory { display: flex; flex-wrap: wrap; gap: 10px; }
-    .case-item, .skin-card { background: #2a2a2a; padding: 10px; cursor: pointer; border-radius: 5px; text-align: center; min-width: 120px; }
-    .case-item:hover, .skin-card:hover { background: #3a3a3a; }
+    .case-item, .skin-card, .inv-skin { background: #2a2a2a; padding: 10px; cursor: pointer; border-radius: 5px; text-align: center; min-width: 120px; }
+    .case-item:hover, .skin-card:hover, .inv-skin:hover { background: #3a3a3a; }
     .roulette-container { overflow: hidden; width: 100%; height: 80px; border: 2px solid #444; position: relative; margin: 20px 0; }
     .roulette-inner { display: flex; transition: transform 0.5s ease-out; }
     .result-area { text-align: center; margin-top: 20px; }
     .btn { padding: 10px 20px; margin: 10px; background: #444; border: none; color: #fff; cursor: pointer; border-radius: 5px; }
     .btn:hover { background: #666; }
     .back-btn { position: absolute; top: 10px; left: 10px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+    #inventorySection { margin-top: 40px; }
   </style>
 </head>
 <body>
@@ -52,6 +53,11 @@
     </div>
   </div>
 
+  <div id="inventorySection" class="view">
+    <h2>Ekwipunek</h2>
+    <div class="inventory" id="inventory"></div>
+  </div>
+
   <script>
 const balanceEl = document.getElementById("balance");
 const depositInput = document.getElementById("depositInput");
@@ -67,20 +73,35 @@ const lobby = document.getElementById("lobby");
 const caseView = document.getElementById("caseView");
 const selectedCaseName = document.getElementById("selectedCaseName");
 const backBtn = document.getElementById("backBtn");
+const inventoryDiv = document.getElementById("inventory");
+const inventorySection = document.getElementById("inventorySection");
 
 let balance = 1000;
 let inventory = [];
 let currentCase = null;
 let lastDrop = null;
 
-const skins = Array.from({ length: 50 }, (_, i) => ({
-  name: `Skin #${i + 1}`,
+const skinNames = [
+  "Dragon Lore", "Printstream", "The Empress", "Doppler", "Kill Confirmed",
+  "Fire Serpent", "Howl", "Blaze", "Water Elemental", "Fade",
+  "Asiimov", "Neon Rider", "Cortex", "Poseidon", "Redline",
+  "Fever Dream", "Bloodsport", "Decimator", "Neo-Noir", "Phantom Disruptor",
+  "Legion of Anubis", "The Traitor", "Chromatic Aberration", "Nightwish", "Visions",
+  "Mecha Industries", "Monster Mashup", "Elite Build", "Duality", "Ocean Drive",
+  "Vogue", "Slaughter", "Vulcan", "Wildfire", "Ticket to Hell",
+  "Lore", "Hyper Beast", "Wasteland Rebel", "Tiger Tooth", "Ice Coaled",
+  "Blackiimov", "The Emperor", "Whiteout", "Code Red", "Bullet Rain",
+  "Pink DDPAT", "Fuel Injector", "Orbit Mk01", "Graven", "Heirloom"
+];
+
+const skins = skinNames.map(name => ({
+  name,
   price: Math.floor(Math.random() * 900) + 100,
   chance: Math.random() * 100
 }));
 
 const cases = Array.from({ length: 15 }, (_, i) => ({
-  name: `Skrzynka #${i + 1}`,
+  name: `Mystery Case ${i + 1}`,
   price: 100 + i * 20,
   skins: [...skins.sort(() => Math.random() - 0.5).slice(0, 10)]
 }));
@@ -105,6 +126,17 @@ function renderCases() {
   });
 }
 
+function renderInventory() {
+  inventoryDiv.innerHTML = "";
+  inventory.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "inv-skin";
+    div.textContent = `${item.name} - $${item.price}`;
+    inventoryDiv.appendChild(div);
+  });
+  inventorySection.classList.add("active");
+}
+
 function pickRandomSkin(skins) {
   const total = skins.reduce((sum, s) => sum + s.chance, 0);
   let rand = Math.random() * total;
@@ -122,7 +154,7 @@ function animateRoulette(selected) {
     const fake = currentCase.skins[Math.floor(Math.random() * currentCase.skins.length)];
     all.push(fake);
   }
-  all.splice(15, 0, selected); // dodajemy drop na srodek
+  all.splice(15, 0, selected);
   all.forEach(skin => {
     const div = document.createElement("div");
     div.className = "skin-card";
@@ -154,6 +186,7 @@ toEqBtn.onclick = () => {
   lastDrop = null;
   resultSkin.textContent = "Brak";
   resultPrice.textContent = "0";
+  renderInventory();
 };
 
 sellNowBtn.onclick = () => {
@@ -175,6 +208,7 @@ depositBtn.onclick = () => {
 
 backBtn.onclick = () => {
   caseView.classList.remove("active");
+  inventorySection.classList.remove("active");
   lobby.classList.add("active");
 };
 
