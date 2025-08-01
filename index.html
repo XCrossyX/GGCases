@@ -21,6 +21,8 @@
     .btn:hover { background: #666; }
     .back-btn { position: absolute; top: 10px; left: 10px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
     #inventorySection { margin-top: 40px; }
+    .eq-btn { position: absolute; top: 10px; right: 10px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+    .selected { border: 2px solid lime; }
   </style>
 </head>
 <body>
@@ -36,6 +38,7 @@
   <div id="lobby" class="view active">
     <h1>Wybierz Skrzynkę</h1>
     <div class="cases-list" id="casesList"></div>
+    <div class="eq-btn" id="openEqBtn">OTWÓRZ EQ</div>
   </div>
 
   <div id="caseView" class="view">
@@ -56,164 +59,89 @@
   <div id="inventorySection" class="view">
     <h2>Ekwipunek</h2>
     <div class="inventory" id="inventory"></div>
+    <button class="btn" id="sellSelectedBtn">Sprzedaj Wybrane</button>
+    <div class="back-btn" id="backFromEqBtn">Powrót</div>
   </div>
 
   <script>
-const balanceEl = document.getElementById("balance");
-const depositInput = document.getElementById("depositInput");
-const depositBtn = document.getElementById("depositBtn");
-const casesList = document.getElementById("casesList");
-const openCaseBtn = document.getElementById("openCaseBtn");
-const rouletteInner = document.getElementById("rouletteInner");
-const resultSkin = document.getElementById("resultSkin");
-const resultPrice = document.getElementById("resultPrice");
-const toEqBtn = document.getElementById("toEqBtn");
-const sellNowBtn = document.getElementById("sellNowBtn");
-const lobby = document.getElementById("lobby");
-const caseView = document.getElementById("caseView");
-const selectedCaseName = document.getElementById("selectedCaseName");
-const backBtn = document.getElementById("backBtn");
-const inventoryDiv = document.getElementById("inventory");
+const openEqBtn = document.getElementById("openEqBtn");
+const backFromEqBtn = document.getElementById("backFromEqBtn");
 const inventorySection = document.getElementById("inventorySection");
+const inventoryDiv = document.getElementById("inventory");
+const balanceEl = document.getElementById("balance");
+const sellSelectedBtn = document.getElementById("sellSelectedBtn");
+const casesList = document.getElementById("casesList");
 
 let balance = 1000;
 let inventory = [];
-let currentCase = null;
-let lastDrop = null;
 
-const skinNames = [
-  "Dragon Lore", "Printstream", "The Empress", "Doppler", "Kill Confirmed",
-  "Fire Serpent", "Howl", "Blaze", "Water Elemental", "Fade",
-  "Asiimov", "Neon Rider", "Cortex", "Poseidon", "Redline",
-  "Fever Dream", "Bloodsport", "Decimator", "Neo-Noir", "Phantom Disruptor",
-  "Legion of Anubis", "The Traitor", "Chromatic Aberration", "Nightwish", "Visions",
-  "Mecha Industries", "Monster Mashup", "Elite Build", "Duality", "Ocean Drive",
-  "Vogue", "Slaughter", "Vulcan", "Wildfire", "Ticket to Hell",
-  "Lore", "Hyper Beast", "Wasteland Rebel", "Tiger Tooth", "Ice Coaled",
-  "Blackiimov", "The Emperor", "Whiteout", "Code Red", "Bullet Rain",
-  "Pink DDPAT", "Fuel Injector", "Orbit Mk01", "Graven", "Heirloom"
+const skinNames = Array.from({length: 100}, (_, i) => `Skin ${i + 1}`);
+const allCases = [
+  ...Array.from({length: 10}, (_, i) => ({ name: `Budget Crate ${i+1}`, price: Math.floor(Math.random() * 75) + 1 })),
+  ...Array.from({length: 20}, (_, i) => ({ name: `Battle Box ${i+1}`, price: Math.floor(Math.random() * 400) + 100 })),
+  ...Array.from({length: 30}, (_, i) => ({ name: `Ultra Vault ${i+1}`, price: Math.floor(Math.random() * 9000) + 1000 }))
 ];
-
-const skins = skinNames.map(name => ({
-  name,
-  price: Math.floor(Math.random() * 900) + 100,
-  chance: Math.random() * 100
-}));
-
-const cases = Array.from({ length: 15 }, (_, i) => ({
-  name: `Mystery Case ${i + 1}`,
-  price: 100 + i * 20,
-  skins: [...skins.sort(() => Math.random() - 0.5).slice(0, 10)]
-}));
-
-function updateBalance() {
-  balanceEl.textContent = balance.toFixed(2);
-}
 
 function renderCases() {
   casesList.innerHTML = "";
-  cases.forEach((c, idx) => {
+  allCases.forEach((c, index) => {
     const div = document.createElement("div");
     div.className = "case-item";
-    div.innerHTML = `${c.name}<br>($${c.price})`;
+    div.textContent = `${c.name} ($${c.price})`;
     div.onclick = () => {
-      currentCase = c;
-      selectedCaseName.textContent = `${c.name} - $${c.price}`;
-      lobby.classList.remove("active");
-      caseView.classList.add("active");
+      const skin = skinNames[Math.floor(Math.random() * skinNames.length)];
+      const price = Math.floor(Math.random() * (c.price * 2)) + 1;
+      inventory.push({ name: skin, price });
+      alert(`Wylosowano: ${skin} ($${price}) z ${c.name}`);
+      balance -= c.price;
+      balanceEl.textContent = balance;
     };
     casesList.appendChild(div);
   });
 }
 
-function renderInventory() {
-  inventoryDiv.innerHTML = "";
-  inventory.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "inv-skin";
-    div.textContent = `${item.name} - $${item.price}`;
-    inventoryDiv.appendChild(div);
-  });
+renderCases();
+
+openEqBtn.onclick = () => {
+  document.getElementById("lobby").classList.remove("active");
   inventorySection.classList.add("active");
-}
-
-function pickRandomSkin(skins) {
-  const total = skins.reduce((sum, s) => sum + s.chance, 0);
-  let rand = Math.random() * total;
-  for (let skin of skins) {
-    if (rand < skin.chance) return skin;
-    rand -= skin.chance;
-  }
-  return skins[skins.length - 1];
-}
-
-function animateRoulette(selected) {
-  rouletteInner.innerHTML = "";
-  const all = [];
-  for (let i = 0; i < 30; i++) {
-    const fake = currentCase.skins[Math.floor(Math.random() * currentCase.skins.length)];
-    all.push(fake);
-  }
-  all.splice(15, 0, selected);
-  all.forEach(skin => {
-    const div = document.createElement("div");
-    div.className = "skin-card";
-    div.textContent = skin.name;
-    rouletteInner.appendChild(div);
-  });
-  rouletteInner.style.transform = "translateX(0px)";
-  setTimeout(() => {
-    rouletteInner.style.transition = "transform 2s ease-out";
-    rouletteInner.style.transform = `translateX(-${(15 * 140)}px)`;
-  }, 50);
-}
-
-openCaseBtn.onclick = () => {
-  if (!currentCase || balance < currentCase.price) return;
-  balance -= currentCase.price;
-  updateBalance();
-  const skin = pickRandomSkin(currentCase.skins);
-  animateRoulette(skin);
-  lastDrop = skin;
-  setTimeout(() => {
-    resultSkin.textContent = skin.name;
-    resultPrice.textContent = skin.price;
-  }, 2100);
-};
-
-toEqBtn.onclick = () => {
-  if (lastDrop) inventory.push(lastDrop);
-  lastDrop = null;
-  resultSkin.textContent = "Brak";
-  resultPrice.textContent = "0";
   renderInventory();
 };
 
-sellNowBtn.onclick = () => {
-  if (lastDrop) balance += lastDrop.price;
-  updateBalance();
-  lastDrop = null;
-  resultSkin.textContent = "Brak";
-  resultPrice.textContent = "0";
-};
-
-depositBtn.onclick = () => {
-  const amount = parseFloat(depositInput.value);
-  if (!isNaN(amount) && amount > 0) {
-    balance += amount;
-    updateBalance();
-    depositInput.value = "";
-  }
-};
-
-backBtn.onclick = () => {
-  caseView.classList.remove("active");
+backFromEqBtn.onclick = () => {
   inventorySection.classList.remove("active");
-  lobby.classList.add("active");
+  document.getElementById("lobby").classList.add("active");
 };
 
-renderCases();
-updateBalance();
+function renderInventory() {
+  inventoryDiv.innerHTML = "";
+  inventory.forEach((item, index) => {
+    const div = document.createElement("div");
+    div.className = "inv-skin";
+    div.textContent = `${item.name} ($${item.price})`;
+    div.onclick = () => {
+      div.classList.toggle("selected");
+    };
+    inventoryDiv.appendChild(div);
+  });
+}
+
+sellSelectedBtn.onclick = () => {
+  const selected = document.querySelectorAll(".inv-skin.selected");
+  selected.forEach(div => {
+    const text = div.textContent;
+    const match = text.match(/\$(\d+(?:\.\d+)?)/);
+    if (match) {
+      balance += parseFloat(match[1]);
+    }
+    div.remove();
+  });
+  balanceEl.textContent = balance;
+  inventory = inventory.filter((item, i) => {
+    const divs = Array.from(inventoryDiv.children);
+    return !divs[i] || !divs[i].classList.contains("selected");
+  });
+};
   </script>
 </body>
 </html>
