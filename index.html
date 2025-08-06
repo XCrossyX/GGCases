@@ -92,6 +92,11 @@ function show(view) {
   view.classList.add('active');
 }
 
+function showMultiple(views) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  views.forEach(view => view.classList.add('active'));
+}
+
 loginBtn.onclick = () => {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
@@ -99,8 +104,7 @@ loginBtn.onclick = () => {
     currentUser = username;
     balance = 1000;
     updateBalance();
-    show(topbar);
-    show(lobby);
+    showMultiple([topbar, lobby]);
     renderCases();
   } else {
     authMessage.textContent = "Błędny login lub hasło!";
