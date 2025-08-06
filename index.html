@@ -6,39 +6,50 @@
   <title>Fejk Case Opening</title>
   <style>
     body { font-family: sans-serif; background: #121212; color: #fff; margin: 0; padding: 0; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1e1e1e; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #1e1e1e; position: relative; }
     .balance { font-size: 18px; }
-    .deposit input { width: 80px; margin-right: 5px; }
+    .deposit { display: flex; align-items: center; gap: 5px; }
+    .deposit input { width: 80px; }
     .view { display: none; padding: 20px; }
     .active { display: block; }
     .cases-list, .inventory { display: flex; flex-wrap: wrap; gap: 10px; }
     .case-item, .skin-card, .inv-skin { background: #2a2a2a; padding: 10px; cursor: pointer; border-radius: 5px; text-align: center; min-width: 120px; }
     .case-item:hover, .skin-card:hover, .inv-skin:hover { background: #3a3a3a; }
-    .roulette-container { overflow: hidden; width: 100%; height: 80px; border: 2px solid #444; position: relative; margin: 20px 0; }
-    .roulette-inner { display: flex; transition: transform 0.5s ease-out; }
+    .roulette-container { overflow: hidden; width: 100%; height: 80px; border: 2px solid #444; position: relative; margin: 20px 0; background: #1e1e1e; }
+    .roulette-inner { display: flex; transition: transform 2s ease-out; }
     .result-area { text-align: center; margin-top: 20px; }
     .btn { padding: 10px 20px; margin: 10px; background: #444; border: none; color: #fff; cursor: pointer; border-radius: 5px; }
     .btn:hover { background: #666; }
     .back-btn { position: absolute; top: 10px; left: 10px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
     #inventorySection { margin-top: 40px; }
-    .eq-btn { position: absolute; top: 10px; right: 10px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+    .eq-btn { position: absolute; top: 10px; left: 200px; background: #444; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
     .selected { border: 2px solid lime; }
+    #authSection { padding: 20px; text-align: center; }
+    #authSection input { margin: 5px; padding: 8px; }
   </style>
 </head>
 <body>
+  <div id="authSection" class="view active">
+    <h2>Zaloguj się / Zarejestruj</h2>
+    <input type="text" id="username" placeholder="Nick" />
+    <input type="password" id="password" placeholder="Hasło" />
+    <button class="btn" id="loginBtn">Zaloguj</button>
+    <button class="btn" id="registerBtn">Zarejestruj</button>
+    <div id="authMessage"></div>
+  </div>
 
-  <div class="topbar">
-    <div class="balance">Kasa: $<span id="balance">1000</span></div>
+  <div class="topbar view" id="topbar">
+    <div class="balance">Kasa: $<span id="balance">0</span></div>
     <div class="deposit">
       <input type="number" id="depositInput" placeholder="Kwota" />
       <button class="btn" id="depositBtn">WPŁAĆ</button>
     </div>
+    <div class="eq-btn" id="openEqBtn">OTWÓRZ EQ</div>
   </div>
 
-  <div id="lobby" class="view active">
+  <div id="lobby" class="view">
     <h1>Wybierz Skrzynkę</h1>
     <div class="cases-list" id="casesList"></div>
-    <div class="eq-btn" id="openEqBtn">OTWÓRZ EQ</div>
   </div>
 
   <div id="caseView" class="view">
@@ -64,83 +75,61 @@
   </div>
 
   <script>
-const openEqBtn = document.getElementById("openEqBtn");
-const backFromEqBtn = document.getElementById("backFromEqBtn");
-const inventorySection = document.getElementById("inventorySection");
-const inventoryDiv = document.getElementById("inventory");
-const balanceEl = document.getElementById("balance");
-const sellSelectedBtn = document.getElementById("sellSelectedBtn");
-const casesList = document.getElementById("casesList");
-
-let balance = 1000;
+let balance = 0;
 let inventory = [];
+let currentUser = null;
+let users = JSON.parse(localStorage.getItem('users') || '{}');
 
-const skinNames = Array.from({length: 100}, (_, i) => `Skin ${i + 1}`);
-const allCases = [
-  ...Array.from({length: 10}, (_, i) => ({ name: `Budget Crate ${i+1}`, price: Math.floor(Math.random() * 75) + 1 })),
-  ...Array.from({length: 20}, (_, i) => ({ name: `Battle Box ${i+1}`, price: Math.floor(Math.random() * 400) + 100 })),
-  ...Array.from({length: 30}, (_, i) => ({ name: `Ultra Vault ${i+1}`, price: Math.floor(Math.random() * 9000) + 1000 }))
-];
+const loginBtn = document.getElementById("loginBtn");
+const registerBtn = document.getElementById("registerBtn");
+const authSection = document.getElementById("authSection");
+const topbar = document.getElementById("topbar");
+const lobby = document.getElementById("lobby");
+const authMessage = document.getElementById("authMessage");
 
-function renderCases() {
-  casesList.innerHTML = "";
-  allCases.forEach((c, index) => {
-    const div = document.createElement("div");
-    div.className = "case-item";
-    div.textContent = `${c.name} ($${c.price})`;
-    div.onclick = () => {
-      const skin = skinNames[Math.floor(Math.random() * skinNames.length)];
-      const price = Math.floor(Math.random() * (c.price * 2)) + 1;
-      inventory.push({ name: skin, price });
-      alert(`Wylosowano: ${skin} ($${price}) z ${c.name}`);
-      balance -= c.price;
-      balanceEl.textContent = balance;
-    };
-    casesList.appendChild(div);
-  });
+function show(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  view.classList.add('active');
 }
 
-renderCases();
-
-openEqBtn.onclick = () => {
-  document.getElementById("lobby").classList.remove("active");
-  inventorySection.classList.add("active");
-  renderInventory();
+loginBtn.onclick = () => {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  if (users[username] && users[username] === password) {
+    currentUser = username;
+    balance = 1000;
+    updateBalance();
+    show(topbar);
+    show(lobby);
+    renderCases();
+  } else {
+    authMessage.textContent = "Błędny login lub hasło!";
+  }
 };
 
-backFromEqBtn.onclick = () => {
-  inventorySection.classList.remove("active");
-  document.getElementById("lobby").classList.add("active");
+registerBtn.onclick = () => {
+  const username = document.getElementById("username").value;
+  const password = document.getElementById("password").value;
+  if (username && password) {
+    users[username] = password;
+    localStorage.setItem('users', JSON.stringify(users));
+    authMessage.textContent = "Zarejestrowano! Możesz się zalogować.";
+  } else {
+    authMessage.textContent = "Wypełnij wszystkie pola.";
+  }
 };
 
-function renderInventory() {
-  inventoryDiv.innerHTML = "";
-  inventory.forEach((item, index) => {
-    const div = document.createElement("div");
-    div.className = "inv-skin";
-    div.textContent = `${item.name} ($${item.price})`;
-    div.onclick = () => {
-      div.classList.toggle("selected");
-    };
-    inventoryDiv.appendChild(div);
-  });
+const balanceEl = document.getElementById("balance");
+function updateBalance() {
+  balanceEl.textContent = Math.max(0, balance).toFixed(2);
 }
 
-sellSelectedBtn.onclick = () => {
-  const selected = document.querySelectorAll(".inv-skin.selected");
-  selected.forEach(div => {
-    const text = div.textContent;
-    const match = text.match(/\$(\d+(?:\.\d+)?)/);
-    if (match) {
-      balance += parseFloat(match[1]);
-    }
-    div.remove();
-  });
-  balanceEl.textContent = balance;
-  inventory = inventory.filter((item, i) => {
-    const divs = Array.from(inventoryDiv.children);
-    return !divs[i] || !divs[i].classList.contains("selected");
-  });
+document.getElementById("depositBtn").onclick = () => {
+  const amount = parseFloat(document.getElementById("depositInput").value);
+  if (!isNaN(amount) && amount > 0) {
+    balance += amount;
+    updateBalance();
+  }
 };
   </script>
 </body>
